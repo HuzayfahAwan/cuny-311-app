@@ -38,6 +38,10 @@ The **CUNY 311 App** provides one consistent, digital channel for reporting, rev
 * Export complaints as CSV
 * Search complaints by keyword
 
+> **Admin Demo Access**
+> The admin login credentials are provided on the web app solely so visitors can explore what the admin dashboard looks like.
+> They are not tied to any real account or sensitive data.
+
 ---
 
 ## 🧩 Technical Architecture

@@ -53,9 +53,25 @@ export type Request = {
 };
 
 export type Step =
+  | "landing"
   | "selectCampus"
   | "selectMain"
   | "selectSub"
   | "fillForm"
+  | "success"
+  | "adminLogin"
   | "history";
 
+export type AuthInfo = {
+  token: string;
+  username: string;
+  displayName: string;
+};
+
+export type ToastType = "success" | "error" | "info";
+
+export type Toast = {
+  id: number;
+  message: string;
+  type: ToastType;
+};

@@ -3,150 +3,173 @@ const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const app = express();
 const PORT = 3001;
 const DATA_FILE = path.join(__dirname, "data", "requests.json");
 
-// Ensure data directory exists
+// ─── Admin credentials ───────────────────────────────────────────────────────
+// In production these would come from env vars / a real user store with hashed passwords.
+const ADMIN_ACCOUNTS = [
+  { username: "admin",     password: "cuny311",    displayName: "Admin"        },
+  { username: "moderator", password: "cuny311mod", displayName: "Moderator"    },
+];
+
+// In-memory session store: token → { username, displayName, expiresAt }
+const sessions = new Map();
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
+
+function getSession(req) {
+  const auth = req.headers.authorization || "";
+  if (!auth.startsWith("Bearer ")) return null;
+  const token = auth.slice(7);
+  const session = sessions.get(token);
+  if (!session) return null;
+  if (Date.now() > session.expiresAt) {
+    sessions.delete(token);
+    return null;
+  }
+  return session;
+}
+
+function requireAuth(req, res, next) {
+  if (!getSession(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  next();
+}
+
+// ─── Setup ────────────────────────────────────────────────────────────────────
 const dataDir = path.join(__dirname, "data");
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-// Initialize data file with sample data if it doesn't exist
 if (!fs.existsSync(DATA_FILE)) {
-  const initialData = [
-    {
-      id: 1,
-      title: "Water leak in North Building – 5th floor hallway",
-      campus: "Hunter College",
-      category: "Facilities",
-      status: "OPEN",
-      submitted: "2 hours ago",
-    },
-    {
-      id: 2,
-      title: "Broken elevator in Library Building",
-      campus: "City College",
-      category: "Accessibility",
-      status: "RESOLVED",
-      submitted: "Resolved yesterday",
-    },
-    {
-      id: 3,
-      title: "Slow WiFi in student lounge",
-      campus: "Baruch College",
-      category: "IT / WiFi",
-      status: "IN_PROGRESS",
-      submitted: "Submitted 1 day ago",
-    },
-    {
-      id: 4,
-      title: "Outdoor lighting not working near main entrance",
-      campus: "Brooklyn College",
-      category: "Security",
-      status: "OPEN",
-      submitted: "Submitted 3 days ago",
-    },
-  ];
-  fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
+  fs.writeFileSync(DATA_FILE, JSON.stringify([], null, 2));
 }
 
-// Middleware
-app.use(cors());
+// ─── Middleware ───────────────────────────────────────────────────────────────
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:4173"],
+  credentials: true,
+}));
 app.use(express.json());
 
-// Helper function to read requests from file
+// ─── Auth endpoints ───────────────────────────────────────────────────────────
+
+// POST /api/admin/login
+app.post("/api/admin/login", (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password are required." });
+  }
+
+  const account = ADMIN_ACCOUNTS.find(
+    (a) => a.username === username && a.password === password
+  );
+  if (!account) {
+    return res.status(401).json({ error: "Invalid credentials. Please try again." });
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  sessions.set(token, {
+    username: account.username,
+    displayName: account.displayName,
+    expiresAt: Date.now() + SESSION_TTL_MS,
+  });
+
+  console.log(`[auth] ${account.displayName} signed in`);
+  res.json({ token, admin: { username: account.username, displayName: account.displayName } });
+});
+
+// GET /api/admin/verify
+app.get("/api/admin/verify", (req, res) => {
+  const session = getSession(req);
+  if (!session) return res.status(401).json({ valid: false });
+  res.json({ valid: true, admin: { username: session.username, displayName: session.displayName } });
+});
+
+// POST /api/admin/logout
+app.post("/api/admin/logout", (req, res) => {
+  const auth = req.headers.authorization || "";
+  if (auth.startsWith("Bearer ")) sessions.delete(auth.slice(7));
+  res.json({ success: true });
+});
+
+// ─── Request endpoints (protected) ───────────────────────────────────────────
+
 function readRequests() {
   try {
-    const data = fs.readFileSync(DATA_FILE, "utf8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Error reading requests:", error);
+    return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  } catch {
     return [];
   }
 }
 
-// Helper function to write requests to file
-function writeRequests(requests) {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(requests, null, 2));
-  } catch (error) {
-    console.error("Error writing requests:", error);
-    throw error;
-  }
+function writeRequests(data) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// GET /api/requests - Get all requests
-app.get("/api/requests", (req, res) => {
-  try {
-    const requests = readRequests();
-    res.json(requests);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch requests" });
-  }
-});
-
-// POST /api/requests - Create a new request
+// Public: submit a request (no auth needed — anyone can report)
 app.post("/api/requests", (req, res) => {
-  try {
-    const { campus, category, description } = req.body;
-
-    if (!campus || !category || !description) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    const requests = readRequests();
-    const newRequest = {
-      id: requests.length > 0 ? Math.max(...requests.map((r) => r.id)) + 1 : 1,
-      title: description.trim().slice(0, 80) || "New service request",
-      campus,
-      category,
-      status: "OPEN",
-      submitted: "Just now",
-    };
-
-    requests.unshift(newRequest); // Add to beginning
-    writeRequests(requests);
-
-    res.status(201).json(newRequest);
-  } catch (error) {
-    console.error("Error creating request:", error);
-    res.status(500).json({ error: "Failed to create request" });
+  const { campus, category, description } = req.body || {};
+  if (!campus || !category || !description) {
+    return res.status(400).json({ error: "Missing required fields." });
   }
+  const requests = readRequests();
+  const newReq = {
+    id: requests.length > 0 ? Math.max(...requests.map((r) => r.id)) + 1 : 1,
+    campus,
+    category,
+    description: description.trim(),
+    status: "OPEN",
+    submitted: new Date().toISOString(),
+  };
+  requests.unshift(newReq);
+  writeRequests(requests);
+  res.status(201).json(newReq);
 });
 
-// PATCH /api/requests/:id - Update request status
-app.patch("/api/requests/:id", (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    if (!status || !["OPEN", "IN_PROGRESS", "RESOLVED"].includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
-
-    const requests = readRequests();
-    const requestIndex = requests.findIndex((r) => r.id === parseInt(id));
-
-    if (requestIndex === -1) {
-      return res.status(404).json({ error: "Request not found" });
-    }
-
-    requests[requestIndex].status = status;
-    writeRequests(requests);
-
-    res.json(requests[requestIndex]);
-  } catch (error) {
-    console.error("Error updating request:", error);
-    res.status(500).json({ error: "Failed to update request" });
-  }
+// Protected: read all requests
+app.get("/api/requests", requireAuth, (req, res) => {
+  res.json(readRequests());
 });
 
-// Start server
+// Protected: update status
+app.patch("/api/requests/:id", requireAuth, (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body || {};
+  const valid = ["OPEN", "IN_PROGRESS", "RESOLVED", "CANCELLED"];
+  if (!status || !valid.includes(status)) {
+    return res.status(400).json({ error: "Invalid status." });
+  }
+  const requests = readRequests();
+  const idx = requests.findIndex((r) => r.id === parseInt(id));
+  if (idx === -1) return res.status(404).json({ error: "Not found." });
+  requests[idx].status = status;
+  writeRequests(requests);
+  res.json(requests[idx]);
+});
+
+// ─── Root health check ────────────────────────────────────────────────────────
+app.get("/", (req, res) => {
+  res.json({
+    name: "CUNY 311 API",
+    status: "ok",
+    endpoints: [
+      "POST /api/admin/login",
+      "GET  /api/admin/verify",
+      "POST /api/admin/logout",
+      "POST /api/requests",
+      "GET  /api/requests  (auth required)",
+      "PATCH /api/requests/:id  (auth required)",
+    ],
+  });
+});
+
+// ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`🚀 CUNY 311 Backend Server running on http://localhost:${PORT}`);
-  console.log(`📁 Data stored in: ${DATA_FILE}`);
+  console.log(`\n🚀 CUNY 311 API running at http://localhost:${PORT}`);
+  console.log(`🔑 Default credentials: admin / cuny311`);
+  console.log(`📁 Data: ${DATA_FILE}\n`);
 });
-
