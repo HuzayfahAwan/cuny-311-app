@@ -16,7 +16,7 @@ import SuccessPage from "./components/SuccessPage";
 import AdminLogin from "./components/AdminLogin";
 import AdminDashboard from "./components/AdminDashboard";
 
-const API = "http://localhost:3001";
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 const SAMPLE_REQUESTS: Request[] = [
   {

@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import { FiLock, FiUser, FiEye, FiEyeOff, FiAlertCircle, FiArrowLeft } from "react-icons/fi";
 import type { AuthInfo } from "../types";
 
-const API = "http://localhost:3001";
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 interface AdminLoginProps {
   onLoginSuccess: (auth: AuthInfo) => void;

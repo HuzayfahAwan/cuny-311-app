@@ -6,7 +6,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const DATA_FILE = path.join(__dirname, "data", "requests.json");
 
 // ─── Admin credentials ───────────────────────────────────────────────────────
@@ -49,8 +49,14 @@ if (!fs.existsSync(DATA_FILE)) {
 }
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:4173",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:4173"],
+  origin: ALLOWED_ORIGINS,
   credentials: true,
 }));
 app.use(express.json());
