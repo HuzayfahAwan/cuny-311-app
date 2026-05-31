@@ -50,7 +50,7 @@ The **CUNY 311 App** provides one consistent, digital channel for reporting, rev
 | -------------- | --------------------------------------------------------- | ----------------------------------- |
 | **Frontend**   | React (Vite) + TypeScript + Tailwind CSS                  | Modern, modular UI                  |
 | **Backend**    | Node.js + Express                                         | REST API for complaints             |
-| **Storage**    | JSON file (MVP) → SQLite (Phase 2)                        | Local persistence, future migration |
+| **Storage**    | JSON file                                                 | Local persistence                   |
 | **Testing**    | Vitest (unit), Playwright (optional E2E)                  | Reliability checks                  |
 | **Deployment** | Vercel                                                    | Cloud hosting                       |
 | **Docs**       | `/docs/ADR/`, `/docs/standups/`, `/docs/roadmap.md`       | Team documentation                  |
