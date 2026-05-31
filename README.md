@@ -52,7 +52,7 @@ The **CUNY 311 App** provides one consistent, digital channel for reporting, rev
 | **Backend**    | Node.js + Express                                         | REST API for complaints             |
 | **Storage**    | JSON file (MVP) → SQLite (Phase 2)                        | Local persistence, future migration |
 | **Testing**    | Vitest (unit), Playwright (optional E2E)                  | Reliability checks                  |
-| **Deployment** | Frontend → Vercel / Netlify<br>Backend → Render / Railway | Cloud hosting                       |
+| **Deployment** | Vercel                                                    | Cloud hosting                       |
 | **Docs**       | `/docs/ADR/`, `/docs/standups/`, `/docs/roadmap.md`       | Team documentation                  |
 
 ---
@@ -97,39 +97,6 @@ npm run dev
 
 * **User Form:** [http://localhost:5173](http://localhost:5173)
 * **Admin Dashboard:** [http://localhost:5173/admin](http://localhost:5173/admin)
-
----
-
-## 🗺️ 10-Week Roadmap (Current Week: 3)
-
-| Week   | Focus                   | Key Deliverables                                      | Status         |
-| ------ | ----------------------- | ----------------------------------------------------- | -------------- |
-| **1**  | Project Setup           | Repo init, Codespaces, TypeScript, Tailwind, README   | ✅ Completed    |
-| **2**  | UI Foundation           | Base form layout, dropdowns, anonymous toggle         | ✅ Completed    |
-| **3**  | Backend MVP             | Express API, JSON storage, functional form submit     | ✅ Completed    |
-| **4**  | Design Polish           | Tailwind colors, icons, layout improvements           | 🟡 In Progress |
-| **5**  | Functionality Expansion | More categories, email field, validation enhancements | 🔜 Planned     |
-| **6**  | Admin Dashboard Upgrade | Filtering, status toggle, CSV export                  | 🔜 Planned     |
-| **7**  | QA & Testing            | Functional tests, bug fixes, cross-device checks      | 🔜 Planned     |
-| **8**  | Deployment              | Host backend (Render) + frontend (Vercel)             | 🔜 Planned     |
-| **9**  | Documentation           | Final ADRs, screenshots, presentation prep            | 🔜 Planned     |
-| **10** | Presentation & Wrap-Up  | Final demo and retrospective report                   | 🔜 Planned     |
-
----
-
-## 🧭 Summary
-
-* Current Progress: **Week 3 – Backend MVP Working**
-* Next Focus: **UI polish + admin improvements**
-* Final Goal: **Deliver a fully functional, visually polished MVP by early December 2025**
-
----
-
-## 👥 Team
-
-* **Jason Parmar** – Frontend Development & Documentation
-* **Leonardo Cuapio** – UI/UX Design & Integration
-* **Hayyan Awan** – Backend Development & API Design
 
 ---
 
